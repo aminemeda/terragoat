@@ -1,0 +1,43 @@
+name: Checkov IaC Scan
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  checkov:
+    name: Checkov Terraform Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.x
+
+      - name: Install Checkov
+        run: |
+          pip install checkov
+
+      - name: Run Checkov
+        run: |
+          checkov -d . --output json > checkov-report.json
+          checkov -d . --output cli > checkov-report.txt
+
+      - name: Upload JSON report
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkov-json-report
+          path: checkov-report.json
+
+      - name: Upload CLI (text) report
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkov-text-report
+          path: checkov-report.txt
