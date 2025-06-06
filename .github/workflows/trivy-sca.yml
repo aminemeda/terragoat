@@ -16,29 +16,36 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install Trivy
+      # Trivy Text Table Report
+      - name: Run Trivy scan (text)
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: fs
           scan-ref: .
           scanners: "vuln"
           vuln-type: "library"
-          format: json
-          output: trivy-report.json
+          format: table
+          output: trivy-report.txt
 
-      - name: Convert JSON to HTML report
-        run: |
-          pip install trivy-to-html
-          trivy-to-html -i trivy-report.json -o trivy-report.html
-
-      - name: Upload HTML Report
+      - name: Upload table report
         uses: actions/upload-artifact@v4
         with:
-          name: trivy-html-report
-          path: trivy-report.html
+          name: trivy-report-text
+          path: trivy-report.txt
 
-      - name: Upload JSON Report
-        uses: actions/upload-artifact@v4
+      # Trivy SARIF Report for GitHub Security Dashboard
+      - name: Run Trivy scan (SARIF)
+        uses: aquasecurity/trivy-action@master
         with:
-          name: trivy-json-report
-          path: trivy-report.json
+          scan-type: fs
+          scan-ref: .
+          scanners: "vuln"
+          vuln-type: "library"
+          format: sarif
+          output: trivy-results.sarif
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: trivy-results.sarif
+
