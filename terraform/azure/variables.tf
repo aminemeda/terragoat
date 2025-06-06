@@ -14,4 +14,4 @@ variable "environment" {
   description = "Must be all lowercase letters or numbers"
 }
 
-# This is a test change to trigger SonarQubE
+# This is a test change to trigger SonarQube
