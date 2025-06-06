@@ -1,4 +1,4 @@
-name: SCA with Trivy
+name: Trivy SCA Scan with Reports
 
 on:
   push:
@@ -22,4 +22,22 @@ jobs:
           scan-ref: .
           scanners: "vuln"
           vuln-type: "library"
-          format: table
+          format: json
+          output: trivy-report.json
+
+      - name: Convert JSON to HTML report
+        run: |
+          pip install trivy-to-html
+          trivy-to-html -i trivy-report.json -o trivy-report.html
+
+      - name: Upload HTML Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-html-report
+          path: trivy-report.html
+
+      - name: Upload JSON Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-json-report
+          path: trivy-report.json
