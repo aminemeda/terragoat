@@ -1,4 +1,4 @@
-name: DAST - OWASP ZAP Scan 
+name: DAST - OWASP ZAP Scan (HTML Only)
 
 on:
   push:
@@ -33,23 +33,22 @@ jobs:
         uses: zaproxy/action-baseline@v0.11.0
         with:
           target: 'http://localhost:3000'
-          cmd_options: '-a -d -J zap-report.json'
+          cmd_options: '-a -d'
         continue-on-error: true
 
-      - name: Find and rename generated ZAP HTML report
+      - name: Find and upload the HTML report
         run: |
-          report_file=$(find . -name '*.html' | head -n 1)
-          echo "Found report: $report_file"
-          mv "$report_file" zap-report.html
+          REPORT=$(find . -name "report_html.html" || true)
+          echo "Found report: $REPORT"
+          if [ -f "$REPORT" ]; then
+            mv "$REPORT" zap-report.html
+          else
+            echo "No HTML report found"
+            exit 1
+          fi
 
       - name: Upload ZAP HTML Report
         uses: actions/upload-artifact@v4
         with:
           name: zap-report-html
           path: zap-report.html
-
-      - name: Upload ZAP JSON Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: zap-report-json
-          path: zap-report.json
