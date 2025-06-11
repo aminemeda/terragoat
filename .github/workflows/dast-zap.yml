@@ -1,4 +1,4 @@
-name: DAST - OWASP ZAP Scan (HTML Only)
+name: DAST - OWASP ZAP Scan 
 
 on:
   push:
@@ -37,12 +37,12 @@ jobs:
           allow_issue_writing: false
         continue-on-error: true
 
-      - name: Find and upload the HTML report
+      - name: Find and rename the HTML report
         run: |
-          REPORT=$(find . -name "report_html.html" || true)
+          REPORT=$(find . -name "report_html.html" | head -n 1)
           echo "Found report: $REPORT"
           if [ -f "$REPORT" ]; then
-            mv "$REPORT" zap-report.html
+            cp "$REPORT" zap-report.html
           else
             echo "No HTML report found"
             exit 1
