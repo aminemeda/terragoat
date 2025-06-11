@@ -1,0 +1,38 @@
+name: Container Security - Trivy
+
+on:
+  push:
+    paths:
+      - 'juice-shop/**'
+  pull_request:
+    paths:
+      - 'juice-shop/**'
+  workflow_dispatch:
+
+jobs:
+  trivy-image-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Juice Shop Docker image
+        run: docker build -t juice-shop-image ./juice-shop
+
+      - name: Scan Docker image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: juice-shop-image
+          format: 'table'
+          output: trivy-image-report.txt
+          ignore-unfixed: true
+
+      - name: Upload Trivy image report as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: trivy-image-report
+          path: trivy-image-report.txt
