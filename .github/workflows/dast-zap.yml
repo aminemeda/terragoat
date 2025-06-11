@@ -34,6 +34,7 @@ jobs:
         with:
           target: 'http://localhost:3000'
           cmd_options: '-a -d'
+          allow_issue_writing: false
         continue-on-error: true
 
       - name: Find and upload the HTML report
