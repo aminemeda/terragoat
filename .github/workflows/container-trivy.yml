@@ -1,4 +1,4 @@
-name: Container Security - Trivy
+name: Container Security - Trivy (HTML Report)
 
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Docker
         uses: docker/setup-buildx-action@v3
@@ -23,16 +23,49 @@ jobs:
       - name: Build Juice Shop Docker image
         run: docker build -t juice-shop-image ./juice-shop
 
-      - name: Scan Docker image with Trivy
+      - name: Scan Docker image with Trivy (JSON)
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: juice-shop-image
-          format: 'table'
-          output: trivy-image-report.txt
+          format: 'json'
+          output: trivy-image-report.json
           ignore-unfixed: true
 
-      - name: Upload Trivy image report as artifact
+      - name: Install Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Convert Trivy JSON to HTML
+        run: |
+          python3 <<EOF
+          import json
+          from pathlib import Path
+
+          with open("trivy-image-report.json") as f:
+              data = json.load(f)
+
+          html = "<html><head><style>body{font-family:Arial}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:8px}th{background:#eee}</style></head><body>"
+          html += "<h1>Trivy Docker Image Vulnerability Report</h1>"
+
+          for result in data.get("Results", []):
+              html += f"<h2>{result.get('Target')}</h2><table><tr><th>ID</th><th>Package</th><th>Severity</th><th>Title</th></tr>"
+              for vuln in result.get("Vulnerabilities", []):
+                  html += f"<tr><td>{vuln['VulnerabilityID']}</td><td>{vuln['PkgName']}</td><td>{vuln['Severity']}</td><td>{vuln.get('Title', '')}</td></tr>"
+              html += "</table><br>"
+
+          html += "</body></html>"
+          Path("trivy-image-report.html").write_text(html)
+          EOF
+
+      - name: Upload Trivy JSON Report
         uses: actions/upload-artifact@v4
         with:
-          name: trivy-image-report
-          path: trivy-image-report.txt
+          name: trivy-image-report-json
+          path: trivy-image-report.json
+
+      - name: Upload Trivy HTML Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-image-report-html
+          path: trivy-image-report.html
