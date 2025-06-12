@@ -36,22 +36,27 @@ jobs:
           from pathlib import Path
 
           with open("checkov-report.json") as f:
-              results = json.load(f)
+              data = json.load(f)
 
           html = "<html><head><meta charset='UTF-8'><style>body{font-family:Arial}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:8px}th{background:#eee}</style></head><body>"
           html += "<h1>Checkov IaC Report</h1>"
 
-          if isinstance(results, list) and results:
-              html += "<table><tr><th>ID</th><th>File</th><th>Resource</th><th>Severity</th><th>Message</th></tr>"
-              for check in results:
-                  html += f"<tr><td>{check.get('check_id', '')}</td><td>{check.get('file_path', '')}</td><td>{check.get('resource', '')}</td><td>{check.get('severity', '')}</td><td>{check.get('check_name', '')}</td></tr>"
-              html += "</table><br>"
+          if isinstance(data, list) and data and "results" in data[0] and "failed_checks" in data[0]["results"]:
+              checks = data[0]["results"]["failed_checks"]
+              if checks:
+                  html += "<table><tr><th>ID</th><th>File</th><th>Resource</th><th>Severity</th><th>Message</th></tr>"
+                  for check in checks:
+                      html += f"<tr><td>{check.get('check_id', '')}</td><td>{check.get('file_path', '')}</td><td>{check.get('resource', '')}</td><td>{check.get('severity', '')}</td><td>{check.get('check_name', '')}</td></tr>"
+                    html += "</table><br>"
+              else:
+                  html += "<p style='color:green'><strong>✅ No failed checks detected.</strong></p>"
           else:
-              html += "<p style='color:green'><strong>✅ No failed checks detected or unknown format.</strong></p>"
+              html += "<p style='color:orange'><strong>⚠️ No failed checks or unexpected format.</strong></p>"
 
           html += "</body></html>"
           Path("checkov-report.html").write_text(html)
           EOF
+
 
 
       - name: Upload Checkov JSON Report
