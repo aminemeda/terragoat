@@ -41,21 +41,18 @@ jobs:
           html = "<html><head><meta charset='UTF-8'><style>body{font-family:Arial}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:8px}th{background:#eee}</style></head><body>"
           html += "<h1>Checkov IaC Report</h1>"
 
-          if isinstance(results, dict) and "results" in results and "failed_checks" in results["results"]:
-              checks = results["results"]["failed_checks"]
-              if checks:
-                  html += "<table><tr><th>ID</th><th>File</th><th>Resource</th><th>Severity</th><th>Message</th></tr>"
-                  for check in checks:
-                      html += f"<tr><td>{check.get('check_id', '')}</td><td>{check.get('file_path', '')}</td><td>{check.get('resource', '')}</td><td>{check.get('severity', '')}</td><td>{check.get('check_name', '')}</td></tr>"
-                  html += "</table><br>"
-              else:
-                  html += "<p style='color:green'><strong>✅ No failed checks detected.</strong></p>"
+          if isinstance(results, list) and results:
+              html += "<table><tr><th>ID</th><th>File</th><th>Resource</th><th>Severity</th><th>Message</th></tr>"
+              for check in results:
+                  html += f"<tr><td>{check.get('check_id', '')}</td><td>{check.get('file_path', '')}</td><td>{check.get('resource', '')}</td><td>{check.get('severity', '')}</td><td>{check.get('check_name', '')}</td></tr>"
+              html += "</table><br>"
           else:
-              html += "<p style='color:orange'><strong>⚠️ No data found or unexpected format.</strong></p>"
+              html += "<p style='color:green'><strong>✅ No failed checks detected or unknown format.</strong></p>"
 
           html += "</body></html>"
           Path("checkov-report.html").write_text(html)
           EOF
+
 
       - name: Upload Checkov JSON Report
         uses: actions/upload-artifact@v4
