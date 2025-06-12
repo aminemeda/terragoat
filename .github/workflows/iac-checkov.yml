@@ -1,4 +1,4 @@
-name: Checkov IaC Scan
+name: Checkov IaC Scan with HTML Report
 
 on:
   push:
@@ -6,6 +6,7 @@ on:
       - main
       - master
   pull_request:
+  workflow_dispatch:
 
 jobs:
   checkov:
@@ -14,30 +15,51 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.x
+          python-version: '3.x'
 
       - name: Install Checkov
-        run: |
-          pip install checkov
+        run: pip install checkov
 
-      - name: Run Checkov
+      - name: Run Checkov and generate JSON
         run: |
           checkov -d . --output json --soft-fail > checkov-report.json
-          checkov -d . --output cli --soft-fail > checkov-report.txt
 
-      - name: Upload JSON report
+      - name: Convert Checkov JSON report to HTML
+        run: |
+          python3 <<EOF
+          import json
+          from pathlib import Path
+
+          with open("checkov-report.json") as f:
+              data = json.load(f)
+
+          html = "<html><head><style>body{font-family:Arial}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:8px}th{background:#eee}</style></head><body>"
+          html += "<h1>Checkov IaC Report</h1>"
+
+          for result in data.get("results", {}).get("failed_checks", []):
+              html += "<table><tr><th>ID</th><th>File</th><th>Resource</th><th>Severity</th><th>Message</th></tr>"
+              html += f"<tr><td>{result['check_id']}</td><td>{result['file_path']}</td><td>{result['resource']}</td><td>{result['severity']}</td><td>{result['check_name']}</td></tr></table><br>"
+
+          if not data.get("results", {}).get("failed_checks", []):
+              html += "<p style='color:green'><strong>✅ No failed checks detected.</strong></p>"
+
+          html += "</body></html>"
+          Path("checkov-report.html").write_text(html)
+          EOF
+
+      - name: Upload Checkov JSON Report
         uses: actions/upload-artifact@v4
         with:
           name: checkov-json-report
           path: checkov-report.json
 
-      - name: Upload CLI (text) report
+      - name: Upload Checkov HTML Report
         uses: actions/upload-artifact@v4
         with:
-          name: checkov-text-report
-          path: checkov-report.txt
+          name: checkov-html-report
+          path: checkov-report.html
