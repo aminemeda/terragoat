@@ -1,11 +1,11 @@
 name: Checkov IaC Scan
-
 on:
   push:
     branches:
       - main
       - master
   pull_request:
+  workflow_dispatch:
 
 jobs:
   checkov:
@@ -14,30 +14,86 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.x
+          python-version: '3.x'
 
       - name: Install Checkov
-        run: |
-          pip install checkov
+        run: pip install checkov
 
-      - name: Run Checkov
+      - name: Run Checkov and generate JSON report
         run: |
           checkov -d . --output json --soft-fail > checkov-report.json
-          checkov -d . --output cli --soft-fail > checkov-report.txt
 
-      - name: Upload JSON report
+      - name: Convert Checkov JSON report to Enhanced HTML
+        run: |
+          python3 <<EOF
+          import json
+          from pathlib import Path
+
+          with open("checkov-report.json") as f:
+              data = json.load(f)
+
+          def get_color(severity):
+              if severity == "HIGH":
+                  return "#ffcccc"
+              elif severity == "MEDIUM":
+                  return "#ffe5b4"
+              elif severity == "LOW":
+                  return "#e6f7ff"
+              return "#f2f2f2"
+
+          html = """
+          <html><head><meta charset='UTF-8'>
+          <style>
+            body { font-family: Arial; padding: 20px; }
+            h1 { color: #333; }
+            table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+            th, td { border: 1px solid #ccc; padding: 10px; text-align: left; vertical-align: top; }
+            th { background-color: #f5f5f5; }
+            tr:hover { background-color: #f0f0f0; }
+          </style>
+          </head><body>
+          <h1>Checkov IaC Report</h1>
+          """
+
+          if isinstance(data, list) and data and "results" in data[0] and "failed_checks" in data[0]["results"]:
+              checks = data[0]["results"]["failed_checks"]
+              if checks:
+                  html += "<table><tr><th>ID</th><th>File</th><th>Lines</th><th>Resource</th><th>Severity</th><th>Message</th><th>Guideline</th></tr>"
+                  for check in checks:
+                      severity = check.get('severity', 'NONE')
+                      color = get_color(severity)
+                      html += f"<tr style='background-color:{color};'>"
+                      html += f"<td>{check.get('check_id', '')}</td>"
+                      html += f"<td>{check.get('file_path', '')}</td>"
+                      html += f"<td>{'-'.join(map(str, check.get('file_line_range', [])))}</td>"
+                      html += f"<td>{check.get('resource', '')}</td>"
+                      html += f"<td>{severity}</td>"
+                      html += f"<td>{check.get('check_name', '')}</td>"
+                      html += f"<td><a href='{check.get('guideline', '#')}' target='_blank'>View</a></td>"
+                      html += "</tr>"
+                  html += "</table>"
+              else:
+                  html += "<p style='color:green'><strong>✅ No failed checks detected.</strong></p>"
+          else:
+              html += "<p style='color:orange'><strong>⚠️ No failed checks or unexpected format.</strong></p>"
+
+          html += "</body></html>"
+          Path("checkov-report.html").write_text(html)
+          EOF
+
+      - name: Upload Checkov JSON Report
         uses: actions/upload-artifact@v4
         with:
           name: checkov-json-report
           path: checkov-report.json
 
-      - name: Upload CLI (text) report
+      - name: Upload Checkov HTML Report
         uses: actions/upload-artifact@v4
         with:
-          name: checkov-text-report
-          path: checkov-report.txt
+          name: checkov-html-report
+          path: checkov-report.html
