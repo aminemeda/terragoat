@@ -1,4 +1,4 @@
-name: Checkov IaC Scan with HTML Report
+name: Checkov IaC Scan with Enhanced HTML Report
 
 on:
   push:
@@ -29,7 +29,7 @@ jobs:
         run: |
           checkov -d . --output json --soft-fail > checkov-report.json
 
-      - name: Convert Checkov JSON report to HTML
+      - name: Convert Checkov JSON report to Enhanced HTML
         run: |
           python3 <<EOF
           import json
@@ -38,16 +38,46 @@ jobs:
           with open("checkov-report.json") as f:
               data = json.load(f)
 
-          html = "<html><head><meta charset='UTF-8'><style>body{font-family:Arial}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:8px}th{background:#eee}</style></head><body>"
-          html += "<h1>Checkov IaC Report</h1>"
+          def get_color(severity):
+              if severity == "HIGH":
+                  return "#ffcccc"
+              elif severity == "MEDIUM":
+                  return "#ffe5b4"
+              elif severity == "LOW":
+                  return "#e6f7ff"
+              return "#f2f2f2"
+
+          html = """
+          <html><head><meta charset='UTF-8'>
+          <style>
+            body { font-family: Arial; padding: 20px; }
+            h1 { color: #333; }
+            table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+            th, td { border: 1px solid #ccc; padding: 10px; text-align: left; vertical-align: top; }
+            th { background-color: #f5f5f5; }
+            tr:hover { background-color: #f0f0f0; }
+          </style>
+          </head><body>
+          <h1>Checkov IaC Report</h1>
+          """
 
           if isinstance(data, list) and data and "results" in data[0] and "failed_checks" in data[0]["results"]:
               checks = data[0]["results"]["failed_checks"]
               if checks:
-                  html += "<table><tr><th>ID</th><th>File</th><th>Resource</th><th>Severity</th><th>Message</th></tr>"
+                  html += "<table><tr><th>ID</th><th>File</th><th>Lines</th><th>Resource</th><th>Severity</th><th>Message</th><th>Guideline</th></tr>"
                   for check in checks:
-                      html += f"<tr><td>{check.get('check_id', '')}</td><td>{check.get('file_path', '')}</td><td>{check.get('resource', '')}</td><td>{check.get('severity', '')}</td><td>{check.get('check_name', '')}</td></tr>"
-                  html += "</table><br>"
+                      severity = check.get('severity', 'NONE')
+                      color = get_color(severity)
+                      html += f"<tr style='background-color:{color};'>"
+                      html += f"<td>{check.get('check_id', '')}</td>"
+                      html += f"<td>{check.get('file_path', '')}</td>"
+                      html += f"<td>{'-'.join(map(str, check.get('file_line_range', [])))}</td>"
+                      html += f"<td>{check.get('resource', '')}</td>"
+                      html += f"<td>{severity}</td>"
+                      html += f"<td>{check.get('check_name', '')}</td>"
+                      html += f"<td><a href='{check.get('guideline', '#')}' target='_blank'>View</a></td>"
+                      html += "</tr>"
+                  html += "</table>"
               else:
                   html += "<p style='color:green'><strong>✅ No failed checks detected.</strong></p>"
           else:
