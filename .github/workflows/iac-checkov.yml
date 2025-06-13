@@ -1,5 +1,4 @@
-name: Checkov IaC Scan with Enhanced HTML Report
-
+name: Checkov IaC Scan
 on:
   push:
     branches:
